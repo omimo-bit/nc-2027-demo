@@ -1,0 +1,124 @@
+/*
+  NC 2027 Reporting & Monitoring System — shared design tokens.
+  Neutral placeholder branding per client instruction (approved clarification #3):
+  use this until final branding is confirmed. No third-party logos, names,
+  or product references from UI reference screenshots are used here.
+*/
+
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap');
+
+:root {
+  /* Color: cool paper background with a deep field-ops navy + working teal accent */
+  --nc-bg: #F1F3F2;
+  --nc-surface: #FFFFFF;
+  --nc-ink: #1C2530;
+  --nc-ink-soft: #4C5A66;
+  --nc-navy: #16324F;
+  --nc-navy-deep: #0E2138;
+  --nc-teal: #2F6F6B;
+  --nc-amber: #C98A2C;
+  --nc-red: #B3412E;
+  --nc-green: #3C7A5D;
+  --nc-line: #DBE1DF;
+
+  --nc-font-display: 'Space Grotesk', 'IBM Plex Sans', sans-serif;
+  --nc-font-body: 'IBM Plex Sans', system-ui, sans-serif;
+
+  --nc-radius-sm: 6px;
+  --nc-radius-md: 10px;
+  --nc-space-1: 8px;
+  --nc-space-2: 16px;
+  --nc-space-3: 24px;
+  --nc-space-4: 40px;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--nc-bg);
+  color: var(--nc-ink);
+  font-family: var(--nc-font-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, .nc-display {
+  font-family: var(--nc-font-display);
+  font-weight: 600;
+  color: var(--nc-navy-deep);
+  margin: 0;
+}
+
+button {
+  font-family: var(--nc-font-body);
+  cursor: pointer;
+  border: none;
+}
+
+.nc-btn-primary {
+  background: var(--nc-navy);
+  color: #fff;
+  padding: 12px 20px;
+  border-radius: var(--nc-radius-sm);
+  font-weight: 600;
+  font-size: 15px;
+}
+.nc-btn-primary:hover { background: var(--nc-navy-deep); }
+.nc-btn-primary:disabled { background: #9AA7B0; cursor: not-allowed; }
+
+.nc-btn-secondary {
+  background: transparent;
+  color: var(--nc-navy);
+  padding: 10px 16px;
+  border: 1px solid var(--nc-line);
+  border-radius: var(--nc-radius-sm);
+  font-weight: 500;
+}
+
+.nc-card {
+  background: var(--nc-surface);
+  border-radius: var(--nc-radius-md);
+  border: 1px solid var(--nc-line);
+  padding: var(--nc-space-2);
+}
+
+.nc-input {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--nc-line);
+  border-radius: var(--nc-radius-sm);
+  font-size: 15px;
+  font-family: var(--nc-font-body);
+  background: #fff;
+}
+.nc-input:focus { outline: 2px solid var(--nc-teal); outline-offset: 1px; }
+
+.nc-badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.nc-badge-pass { background: #E4F1EA; color: var(--nc-green); }
+.nc-badge-warning { background: #F8ECD6; color: var(--nc-amber); }
+.nc-badge-error { background: #F5E1DC; color: var(--nc-red); }
+.nc-badge-neutral { background: #E7EAEC; color: var(--nc-ink-soft); }
+
+.nc-app-header {
+  background: var(--nc-navy);
+  color: #fff;
+  padding: var(--nc-space-2) var(--nc-space-3);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.nc-app-header .nc-display { color: #fff; font-size: 18px; }
+
+.nc-muted { color: var(--nc-ink-soft); font-size: 13px; }
+
+.nc-empty-state {
+  text-align: center;
+  padding: var(--nc-space-4) var(--nc-space-2);
+  color: var(--nc-ink-soft);
+}

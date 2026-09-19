@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <style><?!= include_('frontend/shared/theme') ?></style>
+  <style>
+    .layout { max-width: 960px; margin: 0 auto; padding: var(--nc-space-4) var(--nc-space-3); }
+    .hero { text-align: center; margin-bottom: var(--nc-space-4); }
+    .hero .value { font-family: var(--nc-font-display); font-size: 56px; color: var(--nc-navy-deep); }
+    .hero .label { color: var(--nc-ink-soft); }
+    .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; }
+    .kpi-card { text-align: center; }
+    .kpi-card .kpi-value { font-family: var(--nc-font-display); font-size: 26px; color: var(--nc-navy-deep); }
+    .kpi-card .kpi-label { font-size: 12px; color: var(--nc-ink-soft); margin-top: 4px; }
+    .note { margin-top: var(--nc-space-3); text-align: center; }
+  </style>
+</head>
+<body>
+  <div class="nc-app-header">
+    <div class="nc-display">Client Executive View</div>
+    <button class="nc-btn-secondary" style="background:transparent;border-color:rgba(255,255,255,.4);color:#fff" onclick="ncLogout()">Logout</button>
+  </div>
+
+  <div class="layout">
+    <div class="hero">
+      <div class="value" id="coverageValue">–</div>
+      <div class="label">Store coverage this month</div>
+    </div>
+    <div class="kpi-grid" id="kpiGrid"></div>
+    <div class="note nc-muted" id="qualityNote"></div>
+  </div>
+
+  <script><?!= include_('frontend/shared/api') ?></script>
+  <script>
+    var session = ncRequireSession('CLIENT');
+    if (session) {
+      callApi('getDashboardSummary').then(function (res) {
+        if (!res.success) return;
+        document.getElementById('coverageValue').textContent = res.data.store_coverage_pct + '%';
+        document.getElementById('kpiGrid').innerHTML = res.data.kpis.map(function (k) {
+          return '<div class="nc-card kpi-card"><div class="kpi-value">' + (k.latest_value !== null ? k.latest_value : '–') + '</div>' +
+            '<div class="kpi-label">' + k.kpi_code.replace(/_/g, ' ') + '</div></div>';
+        }).join('');
+      });
+      callApi('getDataQuality').then(function (res) {
+        if (!res.success) return;
+        document.getElementById('qualityNote').textContent = 'Data accuracy (validation pass rate): ' + res.data.validation_pass_rate + '%';
+      });
+    }
+  </script>
+</body>
+</html>

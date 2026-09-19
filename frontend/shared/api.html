@@ -1,0 +1,42 @@
+/**
+ * api.js
+ * Wraps google.script.run in a Promise and calls the server-side function
+ * named exactly like the DRD Demo §6 action list (login, getTodayPJP,
+ * checkIn, submitStock, ...). The frontend never touches Sheets directly —
+ * every action goes through this file into the Apps Script service layer.
+ */
+function callApi(action, payload) {
+  return new Promise(function (resolve, reject) {
+    if (!google || !google.script || !google.script.run) {
+      reject({ success: false, code: 'NO_RUNTIME', message: 'Not running inside Apps Script HTML Service.' });
+      return;
+    }
+    google.script.run
+      .withSuccessHandler(function (result) { resolve(result); })
+      .withFailureHandler(function (err) { reject({ success: false, code: 'SERVER_ERROR', message: err && err.message ? err.message : String(err) }); })
+      [action](payload);
+  });
+}
+
+function ncSession() {
+  var raw = sessionStorage.getItem('nc2027_session');
+  return raw ? JSON.parse(raw) : null;
+}
+
+function ncSetSession(session) {
+  sessionStorage.setItem('nc2027_session', JSON.stringify(session));
+}
+
+function ncLogout() {
+  sessionStorage.removeItem('nc2027_session');
+  window.location.href = '?page=login';
+}
+
+function ncRequireSession(expectedRole) {
+  var session = ncSession();
+  if (!session || (expectedRole && session.role_code !== expectedRole)) {
+    window.location.href = '?page=login';
+    return null;
+  }
+  return session;
+}

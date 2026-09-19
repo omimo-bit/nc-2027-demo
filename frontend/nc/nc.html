@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <style><?!= include_('frontend/shared/theme') ?></style>
+  <style>
+    body { display: flex; justify-content: center; background: #DCE2E0; }
+    .nc-phone { width: 100%; max-width: 430px; min-height: 100vh; background: var(--nc-bg); display: flex; flex-direction: column; }
+    .nc-screen { padding: var(--nc-space-2); flex: 1; padding-bottom: 88px; }
+    .nc-section-title { font-family: var(--nc-font-display); font-size: 15px; color: var(--nc-ink-soft); margin-bottom: var(--nc-space-2); }
+    .nc-list { display: flex; flex-direction: column; gap: 12px; }
+    .visit-card, .task-card { background: var(--nc-surface); border: 1px solid var(--nc-line); border-radius: var(--nc-radius-md); padding: 16px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
+    .visit-card:active, .task-card:active { background: #ECEFEE; }
+    .visit-card .seq { font-family: var(--nc-font-display); font-size: 22px; color: var(--nc-navy); width: 30px; }
+    .visit-title { font-weight: 600; }
+    .nc-back { background: none; border: none; color: var(--nc-navy); font-weight: 500; padding: 0 0 var(--nc-space-2); font-size: 14px; }
+    .nc-block { width: 100%; margin-top: var(--nc-space-2); }
+    .stock-row { display: grid; grid-template-columns: 1.4fr 1fr; gap: 10px; align-items: center; margin-bottom: 10px; }
+    .nc-bottom-nav { position: sticky; bottom: 0; background: var(--nc-surface); border-top: 1px solid var(--nc-line); display: flex; justify-content: space-around; padding: 12px; }
+    .nc-nav-item { background: none; border: none; font-weight: 500; color: var(--nc-ink-soft); font-size: 13px; }
+    .nc-nav-item.active { color: var(--nc-navy); }
+    .form-field { margin-bottom: 12px; }
+    .form-field label { display: block; font-size: 13px; color: var(--nc-ink-soft); margin-bottom: 4px; }
+  </style>
+</head>
+<body>
+  <div class="nc-phone">
+    <div class="nc-app-header">
+      <div class="nc-display" id="greeting">NC 2027</div>
+      <button class="nc-btn-secondary" style="background:transparent;border-color:rgba(255,255,255,.4);color:#fff" onclick="ncLogout()">Logout</button>
+    </div>
+
+    <section id="screen-home" class="nc-screen">
+      <div class="nc-section-title">Today&#39;s Journey (PJP)</div>
+      <div id="visitList" class="nc-list"></div>
+    </section>
+
+    <section id="screen-store" class="nc-screen" hidden>
+      <button class="nc-back" onclick="showScreen('home')">&larr; Back</button>
+      <div class="nc-card" id="storeCard"></div>
+      <button class="nc-btn-primary nc-block" id="checkInBtn">Check-in with GPS</button>
+      <div class="nc-muted" id="checkInStatus"></div>
+    </section>
+
+    <section id="screen-tasks" class="nc-screen" hidden>
+      <button class="nc-back" onclick="showScreen('home')">&larr; Back to Home</button>
+      <div class="nc-section-title">Visit Tasks</div>
+      <div id="taskList" class="nc-list"></div>
+      <button class="nc-btn-primary nc-block" id="completeVisitBtn">Complete Visit</button>
+    </section>
+
+    <section id="screen-stock" class="nc-screen" hidden>
+      <button class="nc-back" onclick="showScreen('tasks')">&larr; Back to Tasks</button>
+      <div class="nc-section-title">Stock Taking</div>
+      <div id="stockForm"></div>
+      <button class="nc-btn-primary nc-block" id="submitStockBtn">Submit Stock Taking</button>
+    </section>
+
+    <section id="screen-offtake" class="nc-screen" hidden>
+      <button class="nc-back" onclick="showScreen('tasks')">&larr; Back to Tasks</button>
+      <div class="nc-section-title">Offtake</div>
+      <div id="offtakeForm"></div>
+      <button class="nc-btn-primary nc-block" id="submitOfftakeBtn">Submit Offtake</button>
+    </section>
+
+    <section id="screen-evidence" class="nc-screen" hidden>
+      <button class="nc-back" onclick="showScreen('tasks')">&larr; Back to Tasks</button>
+      <div class="nc-section-title">Store Evidence</div>
+      <div class="form-field">
+        <label>Photo (camera or gallery)</label>
+        <input type="file" accept="image/*" capture="environment" id="evidenceFile" class="nc-input" />
+      </div>
+      <button class="nc-btn-primary nc-block" id="submitEvidenceBtn">Upload Evidence</button>
+    </section>
+
+    <div class="nc-bottom-nav">
+      <button class="nc-nav-item active" onclick="showScreen('home')">Home</button>
+      <div class="nc-nav-item" id="syncIndicator">Synced</div>
+    </div>
+  </div>
+
+  <script><?!= include_('frontend/shared/api') ?></script>
+  <script>
+    var session = ncRequireSession('NC');
+    var state = { visits: [], currentVisit: null, currentStoreVisitId: null, currentVisitTaskId: null, products: [] };
+
+    if (session) {
+      document.getElementById('greeting').textContent = 'Hi, ' + session.full_name.split(' ')[0];
+      loadHome();
+      callApi('getProducts').then(function (res) { if (res.success) state.products = res.data; });
+    }
+
+    function showScreen(name) {
+      ['home', 'store', 'tasks', 'stock', 'offtake', 'evidence'].forEach(function (s) {
+        document.getElementById('screen-' + s).hidden = (s !== name);
+      });
+    }
+
+    function loadHome() {
+      callApi('getTodayPJP', { user_id: session.user_id }).then(function (res) {
+        if (!res.success) return;
+        state.visits = res.data.visits;
+        var list = document.getElementById('visitList');
+        list.innerHTML = '';
+        if (!state.visits.length) {
+          list.innerHTML = '<div class="nc-empty-state">No PJP scheduled for today. Run seedDemo() to create a sample journey.</div>';
+          return;
+        }
+        state.visits.forEach(function (v) {
+          var el = document.createElement('div');
+          el.className = 'visit-card';
+          el.innerHTML = '<div class="seq">' + v.sequence + '</div>' +
+            '<div style="flex:1;margin-left:12px"><div class="visit-title">' + v.store.store_name + '</div>' +
+            '<div class="nc-muted">' + v.planned_start + ' – ' + v.planned_end + '</div></div>' +
+            '<span class="nc-badge nc-badge-' + statusBadge(v.status) + '">' + v.status + '</span>';
+          el.onclick = function () { openStore(v); };
+          list.appendChild(el);
+        });
+      });
+    }
+
+    function statusBadge(status) {
+      if (status === 'COMPLETED') return 'pass';
+      if (status === 'IN_PROGRESS') return 'warning';
+      if (status === 'MISSED' || status === 'CANCELLED') return 'error';
+      return 'neutral';
+    }
+
+    function openStore(visit) {
+      state.currentVisit = visit;
+      document.getElementById('storeCard').innerHTML =
+        '<div class="nc-display" style="font-size:17px">' + visit.store.store_name + '</div>' +
+        '<div class="nc-muted" style="margin-top:4px">' + visit.store.address + ', ' + visit.store.city + '</div>' +
+        '<div class="nc-muted" style="margin-top:8px">Planned: ' + visit.planned_start + ' – ' + visit.planned_end + '</div>';
+      document.getElementById('checkInStatus').textContent = '';
+      if (visit.status === 'IN_PROGRESS' || visit.status === 'COMPLETED') {
+        document.getElementById('checkInBtn').hidden = true;
+        loadTasks();
+      } else {
+        document.getElementById('checkInBtn').hidden = false;
+      }
+      showScreen('store');
+    }
+
+    document.getElementById('checkInBtn').addEventListener('click', function () {
+      var statusEl = document.getElementById('checkInStatus');
+      statusEl.textContent = 'Getting GPS location…';
+      navigator.geolocation.getCurrentPosition(function (pos) {
+        callApi('checkIn', {
+          pjp_visit_id: state.currentVisit.pjp_visit_id,
+          latitude: pos.coords.latitude,
+          longitude: pos.coords.longitude
+        }).then(function (res) {
+          if (!res.success) { statusEl.textContent = res.message; return; }
+          state.currentStoreVisitId = res.data.visit_id;
+          statusEl.textContent = 'Checked in — ' + res.data.distance_m + 'm from store.';
+          loadTasks();
+        });
+      }, function () {
+        statusEl.textContent = 'GPS unavailable — using store coordinates as fallback (demo only).';
+        callApi('checkIn', { pjp_visit_id: state.currentVisit.pjp_visit_id, latitude: state.currentVisit.store.latitude, longitude: state.currentVisit.store.longitude })
+          .then(function (res) { if (res.success) { state.currentStoreVisitId = res.data.visit_id; loadTasks(); } });
+      });
+    });
+
+    function loadTasks() {
+      if (!state.currentStoreVisitId) { showScreen('tasks'); return; }
+      callApi('getVisitTasks', { visit_id: state.currentStoreVisitId }).then(function (res) {
+        if (!res.success) return;
+        var list = document.getElementById('taskList');
+        list.innerHTML = '';
+        res.data.forEach(function (t) {
+          var el = document.createElement('div');
+          el.className = 'task-card';
+          el.innerHTML = '<div class="visit-title">' + t.task_code.replace('_', ' ') + '</div>' +
+            '<span class="nc-badge nc-badge-' + taskBadge(t) + '">' + t.status + '</span>';
+          el.onclick = function () { openTask(t); };
+          list.appendChild(el);
+        });
+        showScreen('tasks');
+      });
+    }
+
+    function taskBadge(t) {
+      if (t.status === 'COMPLETED') return t.validation_status === 'ERROR' ? 'error' : (t.validation_status === 'WARNING' ? 'warning' : 'pass');
+      return 'neutral';
+    }
+
+    function openTask(task) {
+      state.currentVisitTaskId = task.visit_task_id;
+      if (task.task_code === 'STOCK_TAKING') { renderStockForm(); showScreen('stock'); }
+      else if (task.task_code === 'OFFTAKE') { renderOfftakeForm(); showScreen('offtake'); }
+      else if (task.task_code === 'STORE_EVIDENCE') { showScreen('evidence'); }
+      else { loadTasks(); } // CHECK_IN is auto-completed at check-in time
+    }
+
+    function renderStockForm() {
+      var el = document.getElementById('stockForm');
+      el.innerHTML = '';
+      state.products.forEach(function (p) {
+        var row = document.createElement('div');
+        row.className = 'stock-row';
+        row.innerHTML = '<div>' + p.product_name + '</div><input class="nc-input" type="number" min="0" data-product="' + p.product_id + '" placeholder="Physical stock" />';
+        el.appendChild(row);
+      });
+    }
+
+    document.getElementById('submitStockBtn').addEventListener('click', function () {
+      var lines = Array.from(document.querySelectorAll('#stockForm input')).filter(function (i) { return i.value !== ''; }).map(function (i) {
+        return { product_id: i.getAttribute('data-product'), physical_stock: Number(i.value) };
+      });
+      if (!lines.length) { alert('Enter at least one product stock.'); return; }
+      callApi('submitStock', { visit_task_id: state.currentVisitTaskId, user_id: session.user_id, store_id: state.currentVisit.store.store_id, lines: lines })
+        .then(function (res) { alert(res.success ? 'Submitted — validation: ' + res.data.validation_status : res.message); loadTasks(); });
+    });
+
+    function renderOfftakeForm() {
+      var el = document.getElementById('offtakeForm');
+      el.innerHTML = '';
+      state.products.forEach(function (p) {
+        var row = document.createElement('div');
+        row.className = 'stock-row';
+        row.innerHTML = '<div>' + p.product_name + '</div><input class="nc-input" type="number" min="0" data-product="' + p.product_id + '" placeholder="Qty sold" />';
+        el.appendChild(row);
+      });
+    }
+
+    document.getElementById('submitOfftakeBtn').addEventListener('click', function () {
+      var lines = Array.from(document.querySelectorAll('#offtakeForm input')).filter(function (i) { return i.value !== ''; }).map(function (i) {
+        return { product_id: i.getAttribute('data-product'), quantity: Number(i.value) };
+      });
+      if (!lines.length) { alert('Enter at least one quantity.'); return; }
+      callApi('submitOfftake', { visit_task_id: state.currentVisitTaskId, user_id: session.user_id, store_id: state.currentVisit.store.store_id, lines: lines })
+        .then(function (res) { alert(res.success ? 'Submitted — validation: ' + res.data.validation_status : res.message); loadTasks(); });
+    });
+
+    document.getElementById('submitEvidenceBtn').addEventListener('click', function () {
+      var fileInput = document.getElementById('evidenceFile');
+      if (!fileInput.files.length) { alert('Choose a photo first.'); return; }
+      var file = fileInput.files[0];
+      var reader = new FileReader();
+      reader.onload = function () {
+        var base64 = reader.result.split(',')[1];
+        callApi('submitStoreEvidence', {
+          visit_task_id: state.currentVisitTaskId, user_id: session.user_id, store_id: state.currentVisit.store.store_id,
+          file_base64: base64, mime_type: file.type, file_name: file.name.replace(/\.[^/.]+$/, '')
+        }).then(function (res) { alert(res.success ? 'Evidence uploaded — validation: ' + res.data.validation_status : res.message); loadTasks(); });
+      };
+      reader.readAsDataURL(file);
+    });
+
+    document.getElementById('completeVisitBtn').addEventListener('click', function () {
+      navigator.geolocation.getCurrentPosition(function (pos) { finishVisit(pos.coords.latitude, pos.coords.longitude); }, function () { finishVisit(); });
+    });
+
+    function finishVisit(lat, lng) {
+      callApi('completeVisit', { visit_id: state.currentStoreVisitId, latitude: lat, longitude: lng }).then(function (res) {
+        if (res.success) { alert('Visit completed (' + res.data.completion_percentage + '% tasks done).'); showScreen('home'); loadHome(); }
+      });
+    }
+  </script>
+</body>
+</html>

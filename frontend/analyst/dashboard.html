@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <style><?!= include_('frontend/shared/theme') ?></style>
+  <style>
+    .layout { max-width: 1200px; margin: 0 auto; padding: var(--nc-space-3); }
+    .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin-bottom: var(--nc-space-3); }
+    .kpi-card .kpi-code { font-size: 12px; color: var(--nc-ink-soft); text-transform: capitalize; }
+    .kpi-card .kpi-value { font-family: var(--nc-font-display); font-size: 30px; color: var(--nc-navy-deep); margin: 4px 0; }
+    .kpi-card .kpi-target { font-size: 12px; color: var(--nc-teal); }
+    .two-col { display: grid; grid-template-columns: 1.4fr 1fr; gap: 18px; }
+    table { width: 100%; border-collapse: collapse; background: var(--nc-surface); border-radius: var(--nc-radius-md); overflow: hidden; }
+    th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--nc-line); font-size: 14px; }
+    th { color: var(--nc-ink-soft); font-weight: 500; font-size: 12px; background: #F7F8F7; }
+    .sparkline { height: 40px; }
+  </style>
+</head>
+<body>
+  <div class="nc-app-header">
+    <div class="nc-display">Analyst Dashboard</div>
+    <button class="nc-btn-secondary" style="background:transparent;border-color:rgba(255,255,255,.4);color:#fff" onclick="ncLogout()">Logout</button>
+  </div>
+
+  <div class="layout">
+    <div class="nc-section-title" style="font-weight:600;color:var(--nc-navy-deep);font-family:var(--nc-font-display)">Coverage overview</div>
+    <div class="kpi-grid" id="overviewCards" style="margin-top:12px"></div>
+
+    <div class="two-col">
+      <div>
+        <div class="nc-section-title" style="font-weight:600;color:var(--nc-navy-deep);font-family:var(--nc-font-display)">KPI trend (target vs actual)</div>
+        <div class="kpi-grid" id="kpiCards"></div>
+      </div>
+      <div>
+        <div class="nc-section-title" style="font-weight:600;color:var(--nc-navy-deep);font-family:var(--nc-font-display)">Regional performance</div>
+        <table>
+          <thead><tr><th>Region</th><th>Avg. achievement</th></tr></thead>
+          <tbody id="regionRows"></tbody>
+        </table>
+        <div class="nc-card" style="margin-top:14px">
+          <div class="nc-section-title" style="font-weight:600;margin-bottom:8px">Data quality</div>
+          <div id="dataQuality" class="nc-muted"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script><?!= include_('frontend/shared/api') ?></script>
+  <script>
+    var session = ncRequireSession('DATA_ANALYST');
+    if (session) { loadSummary(); loadRegional(); loadQuality(); }
+
+    function loadSummary() {
+      callApi('getDashboardSummary').then(function (res) {
+        if (!res.success) return;
+        var d = res.data;
+        document.getElementById('overviewCards').innerHTML = [
+          { label: 'Active NC', value: d.active_nc },
+          { label: 'Active Stores', value: d.active_stores },
+          { label: 'Store Coverage', value: d.store_coverage_pct + '%' }
+        ].map(cardHtml).join('');
+
+        document.getElementById('kpiCards').innerHTML = d.kpis.map(function (k) {
+          return '<div class="nc-card kpi-card"><div class="kpi-code">' + k.kpi_code.replace(/_/g, ' ') + '</div>' +
+            '<div class="kpi-value">' + (k.latest_value !== null ? k.latest_value : '–') + '</div>' +
+            '<div class="kpi-target">Target ' + k.target_value + ' · Achv ' + k.achievement + '%</div>' +
+            sparkline(k.trend) + '</div>';
+        }).join('');
+      });
+    }
+
+    function cardHtml(c) {
+      return '<div class="nc-card kpi-card"><div class="kpi-code">' + c.label + '</div><div class="kpi-value">' + c.value + '</div></div>';
+    }
+
+    function sparkline(trend) {
+      if (!trend.length) return '';
+      var w = 160, h = 32, max = Math.max.apply(null, trend.map(function (t) { return t.value; })) || 1;
+      var min = Math.min.apply(null, trend.map(function (t) { return t.value; }));
+      var range = (max - min) || 1;
+      var points = trend.map(function (t, i) {
+        var x = (i / (trend.length - 1 || 1)) * w;
+        var y = h - ((t.value - min) / range) * h;
+        return x.toFixed(1) + ',' + y.toFixed(1);
+      }).join(' ');
+      return '<svg class="sparkline" viewBox="0 0 ' + w + ' ' + h + '" preserveAspectRatio="none">' +
+        '<polyline fill="none" stroke="#2F6F6B" stroke-width="2" points="' + points + '" /></svg>';
+    }
+
+    function loadRegional() {
+      callApi('getRegionalPerformance').then(function (res) {
+        if (!res.success) return;
+        document.getElementById('regionRows').innerHTML = res.data.map(function (r) {
+          return '<tr><td>' + r.region_name + '</td><td>' + (r.avg_achievement !== null ? r.avg_achievement + '%' : '–') + '</td></tr>';
+        }).join('');
+      });
+    }
+
+    function loadQuality() {
+      callApi('getDataQuality').then(function (res) {
+        if (!res.success) return;
+        var d = res.data;
+        document.getElementById('dataQuality').innerHTML =
+          'Pass rate: ' + d.validation_pass_rate + '% · Warning: ' + d.warning_rate + '% · Error: ' + d.error_rate + '%<br>' +
+          'Corrections requested: ' + d.correction_count;
+      });
+    }
+  </script>
+</body>
+</html>
