@@ -9,8 +9,8 @@
  */
 
 // Fill these in after creating the Spreadsheet and Drive folder (see docs/DEPLOYMENT.md).
-var SPREADSHEET_ID = 'PASTE_YOUR_SPREADSHEET_ID_HERE';
-var EVIDENCE_DRIVE_FOLDER_ID = 'PASTE_YOUR_DRIVE_FOLDER_ID_HERE';
+var SPREADSHEET_ID = '11pk3q0OlCeKls6B-LmOjGw28_fMYAIYuw5WmdCk3Iuo';
+var EVIDENCE_DRIVE_FOLDER_ID = '1QsDt7yGq_6R4zfDXlpjPbG1eKR2bKIln';
 
 // Frozen tab list — do not rename without updating SHEET_HEADERS in Setup.gs.
 // Matches 05_DRD_DEMO.md §2.
